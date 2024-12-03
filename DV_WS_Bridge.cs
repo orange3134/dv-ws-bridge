@@ -13,7 +13,7 @@ using WebSocketSharp.Server;
 namespace DV_WS_Bridge
 {
 
-    internal class WSHandler: WebSocketBehavior
+    internal class WSHandler : WebSocketBehavior
     {
         public delegate void ExternalOnMessage(string message);
         public event ExternalOnMessage externalOnMessage = delegate { };
@@ -122,14 +122,16 @@ namespace DV_WS_Bridge
             harmony.PatchAll();
 
             WebSocketServer ws = new WebSocketServer(8787);
-            ws.AddWebSocketService<WSHandler>("/", x =>
+            ws.AddWebSocketService<WSHandler>("/", () =>
             {
+                WSHandler x = new WSHandler();
                 x.log += (string message) => Msg(message);
                 x.externalOnMessage += (string message) =>
                 {
                     string[] lines = message.Split('\n');
                     Array.ForEach(lines, (string y) => requestQueue.Enqueue(new DVRequest(x, y)));
                 };
+                return x;
             });
             ws.KeepClean = false;
             ws.Start();
@@ -156,14 +158,20 @@ namespace DV_WS_Bridge
                             var do_slot_lookup = !slot_cache.ContainsKey(job.slotName);
 
                             // valid check
-                            if (!do_slot_lookup) {
-                                if (slot_cache[job.slotName].validUntil < DateTime.Now) {
+                            if (!do_slot_lookup)
+                            {
+                                if (slot_cache[job.slotName].validUntil < DateTime.Now)
+                                {
                                     var target = slot_cache[job.slotName].value;
                                     if (target == null) do_slot_lookup = true;
-                                    else {
-                                        if (target.Parent.Name != job.slotName) {
+                                    else
+                                    {
+                                        if (target.Parent.Name != job.slotName)
+                                        {
                                             do_slot_lookup = true;
-                                        } else {
+                                        }
+                                        else
+                                        {
                                             slot_cache[job.slotName].UpdateValidity();
                                         }
                                     }
@@ -172,30 +180,35 @@ namespace DV_WS_Bridge
 
                             if (do_slot_lookup)
                             {
-                                if (slot_cache.ContainsKey(job.slotName)) {
+                                if (slot_cache.ContainsKey(job.slotName))
+                                {
                                     if (slot_cache[job.slotName].validUntil > DateTime.Now) continue; // don't spam updates
                                     slot_cache.TryRemove(job.slotName, out _);
                                 }
 
                                 Slot root = __instance.WorldManager.FocusedWorld.RootSlot;
                                 Slot foundSlot = root.FindChild(job.slotName, false, false);
-                                if (foundSlot == null) {
+                                if (foundSlot == null)
+                                {
                                     responces[job.handler].Add($"ERROR {job} (slot not found)");
                                     slot_cache[job.slotName] = new CacheEntry<DynamicVariableSpace>(null);
                                     continue;
                                 }
-                                foundSlot.OnPrepareDestroy += (Slot slot) => {
+                                foundSlot.OnPrepareDestroy += (Slot slot) =>
+                                {
                                     Msg($"destroyed slot {job.slotName}");
                                     slot_cache.TryRemove(job.slotName, out _);
                                 };
 
                                 DynamicVariableSpace foundSpace = foundSlot.FindSpace("");
-                                if (foundSpace == null) {
+                                if (foundSpace == null)
+                                {
                                     responces[job.handler].Add($"ERROR {job} (space not found)");
                                     slot_cache[job.slotName] = new CacheEntry<DynamicVariableSpace>(null);
                                     continue;
                                 }
-                                foundSpace.Destroyed += (_ic) => {
+                                foundSpace.Destroyed += (_ic) =>
+                                {
                                     Msg($"destroyed space {job.slotName}");
                                     slot_cache.TryRemove(job.slotName, out _);
                                 };
@@ -217,7 +230,7 @@ namespace DV_WS_Bridge
                                 {
                                     case "string":
                                         {
-                                            success = space.TryWriteValue<string>(job.variableName, job.value);
+                                            success = space.TryWriteValue<string>(job.variableName, job.value) == DynamicVariableWriteResult.Success;
                                             break;
                                         }
                                     case "bool":
@@ -228,7 +241,7 @@ namespace DV_WS_Bridge
                                                 responces[job.handler].Add($"ERROR {job}");
                                                 continue;
                                             }
-                                            success = space.TryWriteValue<bool>(job.variableName, parsed);
+                                            success = space.TryWriteValue<bool>(job.variableName, parsed) == DynamicVariableWriteResult.Success;
                                             break;
                                         }
                                     case "int":
@@ -239,7 +252,7 @@ namespace DV_WS_Bridge
                                                 responces[job.handler].Add($"ERROR {job}");
                                                 continue;
                                             }
-                                            success = space.TryWriteValue<int>(job.variableName, parsed);
+                                            success = space.TryWriteValue<int>(job.variableName, parsed) == DynamicVariableWriteResult.Success;
                                             break;
                                         }
                                     case "float":
@@ -250,7 +263,7 @@ namespace DV_WS_Bridge
                                                 responces[job.handler].Add($"ERROR {job}");
                                                 continue;
                                             }
-                                            success = space.TryWriteValue<float>(job.variableName, parsed);
+                                            success = space.TryWriteValue<float>(job.variableName, parsed) == DynamicVariableWriteResult.Success;
                                             break;
                                         }
                                     case "float2":
@@ -261,7 +274,7 @@ namespace DV_WS_Bridge
                                                 responces[job.handler].Add($"ERROR {job}");
                                                 continue;
                                             }
-                                            success = space.TryWriteValue<float2>(job.variableName, parsed);
+                                            success = space.TryWriteValue<float2>(job.variableName, parsed) == DynamicVariableWriteResult.Success;
                                             break;
                                         }
                                     case "float3":
@@ -272,7 +285,7 @@ namespace DV_WS_Bridge
                                                 responces[job.handler].Add($"ERROR {job}");
                                                 continue;
                                             }
-                                            success = space.TryWriteValue<float3>(job.variableName, parsed);
+                                            success = space.TryWriteValue<float3>(job.variableName, parsed) == DynamicVariableWriteResult.Success;
                                             if (!success) responces[job.handler].Add($"ERROR {job}");
                                             break;
                                         }
@@ -284,7 +297,7 @@ namespace DV_WS_Bridge
                                                 responces[job.handler].Add($"ERROR {job}");
                                                 continue;
                                             }
-                                            success = space.TryWriteValue<floatQ>(job.variableName, parsed);
+                                            success = space.TryWriteValue<floatQ>(job.variableName, parsed) == DynamicVariableWriteResult.Success;
                                             break;
                                         }
                                     default:
@@ -340,7 +353,8 @@ namespace DV_WS_Bridge
                                         responces[job.handler].Add($"ERROR {job} (unknown type)");
                                         break;
                                 }
-                            if (!success) {
+                            if (!success)
+                            {
                                 responces[job.handler].Add($"ERROR {job}");
                                 slot_cache[job.slotName] = new CacheEntry<DynamicVariableSpace>(null);
                             }
